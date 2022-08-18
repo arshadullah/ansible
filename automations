@@ -1,0 +1,302 @@
+
+jdk_upgrade_check.yaml
+
+#This script is written to validate Java version
+## Copyright: (c) 2021, Arshadullah Khan <arshadullah.k@dnata.com>
+---
+- hosts: jdktest
+  become: yes
+  gather_facts: False
+  tasks:
+   - name: Validate Java Version
+     shell: java -version 2>&1 | grep version | awk '{print $3}' | sed 's/"//g'
+     register: java_version
+   - assert:
+       that:
+         - java_version is version('1.8.0_181', '<=')
+
+
+
+jdk_upgrade.yml
+
+#This script is written to validate Java version
+### Copyright: (c) 2021, Arshadullah Khan <arshadullah.k@dnata.com>
+---
+- hosts: jdktest
+  become: yes
+  gather_facts: False
+  tasks:
+   - name: JDK Upgrade
+     shell: |
+        echo "-----Host being JDK upgrade-----";
+        hostname
+        uptime
+        echo "-----Fix Flags-----";
+        mount -o remount,exec /tmp;
+        mount -o remount,exec /usr;
+        echo "-----Fix flags completed-----";
+        echo "-----Current java version-----";
+        java -version 2>&1
+        echo "-----Check alternatives-----";
+        alternatives --list | grep jdk
+        echo "-----Check java pointing-----";
+        ls -lrth /usr/java/ | grep latest
+        echo "-----Now taking backup of JDK folder in tmp-----"
+        cp -R /usr/java/jdk1.8.0_131 /tmp/
+        echo "-----Check backup is done-----";
+        ls -lrth /tmp/jdk1.8.0_131
+        echo "-----Doing upgrade-----";
+        echo "-----Post upgrade current java version-----";
+        java -version 2>&1
+        echo "-----Post upgrade check alternatives-----";
+        alternatives --list | grep jdk
+        echo "-----Post upgrade check java pointing-----";
+        ls -lrth /usr/java/ | grep latest
+     register: java
+   - debug: var=java.stdout_lines
+...
+
+
+jdk_upgrade1.yml
+
+
+#This script is written to upgrade JDK
+### Copyright: (c) 2021, Arshadullah Khan <arshadullah.k@dnata.com>
+---
+- hosts: workernodes1
+  become: yes
+  gather_facts: False
+  tasks:
+   - name: Host being JDK upgrade
+     shell:
+        echo "-----Host being JDK upgrade-----";
+        hostname;
+   - name: Fix Flags
+     shell:
+        echo "-----Fix Flags-----";
+        mount -o remount,exec /tmp;
+        mount -o remount,exec /usr;
+        echo "-----Fix flags completed-----";
+   - name: Current java version
+     shell:
+        echo "-----Current java version-----";
+        java -version 2>&1
+     register: java_version_old
+   - debug: var=java_version_old.stdout_lines
+   - name: Check alternatives
+     shell:
+        echo "-----Check alternatives-----";
+        alternatives --list | grep jdk;
+   - name: Check java pointing
+     shell:
+        echo "-----Check java pointing-----";
+        ls -lrth /usr/java/ | grep latest;
+   - name: Now taking backup of JDK folder in tmp
+     shell:
+        echo "-----Now taking backup of JDK folder in tmp-----";
+        cp -R /usr/java/jdk1.8.0_131 /tmp/;
+   - name: Validating backup is done
+     shell:
+        echo "-----Check backup is done-----";
+        ls -lrth /tmp/jdk1.8.0_131;
+        rpm -Uvh http://10.127.64.140:8888/jdk-8u181-linux-x64.rpm;
+        echo "-----Doing upgrade-----";
+   - name: Post upgrade current java version
+     shell:
+        echo "-----Post upgrade current java version-----";
+        java -version 2>&1 | grep version | awk '{print $3}' | sed 's/"//g';
+   - name: Post upgrade check alternatives
+     shell:
+        echo "-----Post upgrade check alternatives-----";
+        alternatives --list | grep jdk;
+   - name: Post upgrade check java pointing
+     shell:
+        echo "-----Post upgrade check java pointing-----";
+        ls -lrth /usr/java/ | grep latest;
+     register: java
+   - debug: var=java.stdout_lines
+...
+
+
+
+Install cloudera agent on server : 
+cat pre-check.yml
+---
+
+- hosts: mneu-p-a-edhwrk-006.neu1.azu.prd01.entdp.company.com
+  become: yes
+  gather_facts: no
+  tasks:
+  - name: fetch file
+    fetch:
+        src: /etc/cloudera-scm-agent/config.ini
+        dest: /home/corp.company.com/gnhlxplfm03/
+        flat: yes
+
+- hosts: newworkernodes
+  become: yes
+  gather_facts: no
+  tasks:
+   - name: Swapiness on the hosts
+     shell: |
+        cat /etc/sysctl.conf | grep swappiness
+     register: swappiness
+   - debug: var=swappiness.stdout_lines
+
+
+   - name: change disk flag
+     shell: |
+      sudo mount -o remount,rw /usr
+      sudo mount -o remount,exec /tmp
+
+
+
+   - name: disable THP
+     shell: |
+      echo never > /sys/kernel/mm/transparent_hugepage/enabled
+      echo never > /sys/kernel/mm/transparent_hugepage/defrag
+
+   - name: stop firewall
+     service:
+      name: firewalld
+      state: stopped
+
+   - name: disable firewall
+     service:
+      name: firewalld
+      enabled: no
+
+   - name: get the total CPU
+     shell: |
+       echo "Total number of CPU cores ` cat /proc/cpuinfo | grep "physical id" | sort | wc -l`"
+     register: cpu
+   - debug: var=cpu.stdout_lines
+
+   - name: create cloudera repo
+     yum_repository:
+       name: cloudera-manager
+       description: ClouderaManager
+       file: cloudera-manager
+       baseurl: http://10.127.64.140:8888/archive.cloudera.com/cm7.2.4.patch
+       gpgkey: http://10.127.64.140:8888/archive.cloudera.com/cm7.2.4.patch/RPM-GPG-KEY-cloudera
+       gpgcheck: yes
+
+   - name: download java
+     get_url:
+       url: http://10.127.64.140:8888/jdk-8u181-linux-x64.rpm
+       dest: /tmp/jdk-8u181-linux-x64.rpm
+       mode: '0777'
+
+#   - name: install java
+#     yum:
+#      name: /tmp/jdk-8u181-linux-x64.rpm
+#      state: present
+
+
+   - name: install cloudera agent
+     yum:
+      name: cloudera-manager-agent
+      state: present
+
+   - name: copy the cloudera config.ini
+     copy:
+      src: /home/corp.company.com/gnhlxplfm03/config.ini
+      dest: /etc/cloudera-scm-agent/
+      owner: cloudera-scm
+      group: cloudera-scm
+      mode: 0644
+
+   - name: create agentkey.pw
+     file:
+      path: /etc/cloudera-scm-agent/agentkey.pw
+      state: touch
+      owner: root
+      group: root
+      mode: 0440
+
+
+
+...
+
+
+cat oms_upgrade.yml
+---
+- hosts: pcs
+  become: yes
+  gather_facts: true
+
+  tasks:
+   - name: Remove the OMI package
+     yum:
+       name: omi
+       state: absent
+
+   - name: download OMSagent script
+     get_url:
+       url: https://raw.githubusercontent.com/Microsoft/OMS-Agent-for-Linux/master/installer/scripts/onboard_agent.sh
+       dest: ~/
+       mode: 0777
+     register: wget
+   - debug: var=wget
+   - name: Uninstall OMSagent script
+     shell: ./onboard_agent.sh --purge
+     args:
+       chdir: ~/
+     register: uninstall
+   - debug: var=uninstall
+   - name: Download omsagent version 1.13.40-0
+     get_url:
+       url: https://github.com/microsoft/OMS-Agent-for-Linux/releases/download/OMSAgent_v1.13.40-0/omsagent-1.13.40-0.universal.x64.sh
+       dest: ~/
+       mode: 0777
+     register: wget_latest_version
+   - debug: var=wget_latest_version
+   - name: upgrade omsagent to version 1.13.40-0
+     shell: ./omsagent-1.13.40-0.universal.x64.sh --install -w ssdsd -s sds
+     args:
+       chdir: ~/
+     register: upgrade_oms
+   - debug: var=upgrade_oms
+
+
+
+cat omsuninstall.yml
+---
+- hosts: workernodes1
+  become: yes
+  gather_facts: False
+  tasks:
+   - name: Download omsagent version 1.13.40-0
+     #args:
+      # chdir: /tmp
+     get_url:
+       url: https://github.com/microsoft/OMS-Agent-for-Linux/releases/download/OMSAgent_v1.13.40-0/omsagent-1.13.40-0.universal.x64.sh
+       dest: /tmp
+       mode: 0777
+     register: wget_latest_version
+   - debug: var=wget_latest_version
+
+   - name: Check omsagent status  with Shell command
+     args:
+       chdir: /tmp
+     shell: sudo  ./omsagent-1.13.40-0.universal.x64.sh --version-check
+     register: shellcmd
+   - debug: msg="{{shellcmd.stdout}}"
+
+   - name: Uninstall OMSagent script
+     args:
+       chdir: /tmp
+     shell: sudo  ./omsagent-1.13.40-0.universal.x64.sh --purge
+     #args:
+      # chdir: ~/
+     register: uninstall
+     #sudo: yes
+   - debug: var=uninstall
+
+   - name: Check omsagent status  with Shell command
+     args:
+       chdir: /tmp
+     shell: sudo  ./omsagent-1.13.40-0.universal.x64.sh --version-check
+     register: shellcmd
+   - debug: msg="{{shellcmd.stdout}}"
+   
