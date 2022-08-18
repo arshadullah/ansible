@@ -1,0 +1,46 @@
+for i in `cat host.txt`; do ssh -t user@$i "hostname -f; echo $i; echo status agent; sudo service cloudera-scm-agent status;
+
+for i in `cat oneserver.txt`; do ssh -t user@$i "echo $i;echo status agent; sudo service cloudera-scm-agent status;"; done
+
+for i in `cat oneserver.txt`; do ssh -t $i "echo $i;echo status agent; sudo su; echo sudo working > sudoout.txt" ; done
+
+service sssd status
+
+for i in `cat all_servers.txt`; do ssh -t user@$i "echo $i;echo status agent;sudo ls -lrth /etc/yum.repos.d/cloudera-manager.repo.old;"; done
+
+export CM_BACKUP_DIR="`date +%F`-CM";echo $CM_BACKUP_DIR mkdir -p $CM_BACKUP_DIR
+
+sudo -E tar -cf /data0/cloudera-scm-agent.tar --exclude=*.sock /etc/cloudera-scm-agent /etc/default/cloudera-scm-agent /var/run/cloudera-scm-agent /var/lib/cloudera-scm-agent
+
+for i in `cat oneserver.txt`; do ssh -t user@$i "echo $i;sudo -E tar -cf /data0/cloudera-scm-agent.tar --exclude=*.sock /etc/cloudera-scm-agent /etc/default/cloudera-scm-agent /var/run/cloudera-scm-agent /var/lib/cloudera-scm-agent"; done
+
+sudo mount -o remount,exec /tmp;sudo mount -o remount,exec /usr
+
+for i in `cat all_servers.txt.txt`; do ssh -t user@$i "echo $i;sudo mount -o remount,exec /tmp;sudo mount -o remount,exec /usr"; done
+
+for i in `cat all_servers.txt.txt`; do ssh -t user@$i "echo $i;sudo uptime"; done
+
+for i in `cat testone.txt`; do ssh -t user@$i "echo $i;sudo mount -o remount,exec /tmp;sudo mount -o remount,exec /usr;"; done
+
+for i in `cat testinghost.txt`; do ssh -t user@$i "echo $i;sh /tmp/jdk_upgrade.sh"; done
+
+for i in `cat testinghost.txt`; do sh /tmp/jdk_upgrade.sh; done
+
+scp jdk_upgrade.sh gnhlxplfm01@$i:/tmp/
+
+Daralaman-0342
+while IFS= read -r dest; do
+  scp jdk_upgrade.sh "$dest:/tmp/"
+done <testinghost.txt
+
+
+for i in {1..5}
+do
+   cat /tmp/test.pcap >> /tmp/ipsec_file_copy_largefile.pcap
+done
+===
+
+for i in `cat testinghost.txt`; do ssh -t user@$i "echo $i;sudo ls -lrth /tmp/jdk_upgrade.sh;"; done
+
+for i in `cat testinghost.txt`; do ssh -t user@$i "echo $i;sh /tmp/jdk_upgrade.sh; alternatives –list | grep jdk"; done
+
