@@ -2,7 +2,7 @@
 jdk_upgrade_check.yaml
 
 #This script is written to validate Java version
-## Copyright: (c) 2021, Arshadullah Khan <arshadullah.k@dnata.com>
+## Copyright: (c) 2021, Arshadullah Khan <arshadullah.k>
 ---
 - hosts: jdktest
   become: yes
@@ -20,7 +20,7 @@ jdk_upgrade_check.yaml
 jdk_upgrade.yml
 
 #This script is written to validate Java version
-### Copyright: (c) 2021, Arshadullah Khan <arshadullah.k@dnata.com>
+### Copyright: (c) 2021, Arshadullah Khan <arshadullah.k>
 ---
 - hosts: jdktest
   become: yes
@@ -61,7 +61,7 @@ jdk_upgrade1.yml
 
 
 #This script is written to upgrade JDK
-### Copyright: (c) 2021, Arshadullah Khan <arshadullah.k@dnata.com>
+### Copyright: (c) 2021, Arshadullah Khan <arshadullah.k>
 ---
 - hosts: workernodes1
   become: yes
@@ -123,7 +123,7 @@ Install cloudera agent on server :
 cat pre-check.yml
 ---
 
-- hosts: mneu-p-a-edhwrk-006.neu1.azu.prd01.entdp.company.com
+- hosts: mneu-.company.com
   become: yes
   gather_facts: no
   tasks:
